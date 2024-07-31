@@ -16,21 +16,7 @@
 
 package io.microraft.metrics;
 
-import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.toList;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
-
-import javax.annotation.Nonnull;
-
-import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.MultiGauge;
-import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.*;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import io.microraft.RaftEndpoint;
 import io.microraft.RaftNode;
@@ -40,6 +26,16 @@ import io.microraft.RaftRole;
 import io.microraft.report.RaftNodeReport;
 import io.microraft.report.RaftNodeReport.RaftNodeReportReason;
 import io.microraft.report.RaftNodeReportListener;
+
+import javax.annotation.Nonnull;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
+
+import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Collect metrics reported by Raft nodes and publishes them to Metric
@@ -128,7 +124,7 @@ public final class RaftNodeMetrics implements RaftNodeReportListener, MeterBinde
      *            The Raft node id to be attached as "raft.node.id" rag
      */
     public RaftNodeMetrics(String groupIdStr, String raftNodeIdStr) {
-        this(List.of(Tag.of("raft.group.id", requireNonNull(groupIdStr)),
+        this(Arrays.asList(Tag.of("raft.group.id", requireNonNull(groupIdStr)),
                 Tag.of("raft.node.id", requireNonNull(raftNodeIdStr))));
     }
 
@@ -140,13 +136,12 @@ public final class RaftNodeMetrics implements RaftNodeReportListener, MeterBinde
      *            the list of tags to be attached to the published metrics.
      */
     public RaftNodeMetrics(List<Tag> tags) {
-        this.tags = List.copyOf(requireNonNull(tags));
+        this.tags = Collections.unmodifiableList(requireNonNull(tags));
     }
 
     @Override
     public void accept(@Nonnull RaftNodeReport report) {
         this.report = report;
-
         Map<RaftEndpoint, Long> followerMatchIndices = report.getLog().getFollowerMatchIndices();
         this.followerMatchIndicesGauge.register(followerMatchIndices.keySet().stream().map(endpoint -> {
             Tags followerTag = Tags.of("follower", endpoint.getId().toString());

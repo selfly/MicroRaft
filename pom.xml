@@ -60,7 +60,7 @@
         <root.dir>${project.basedir}</root.dir>
         <maven.build.timestamp.format>yyyy-MM-dd</maven.build.timestamp.format>
         <timestamp>${maven.build.timestamp}</timestamp>
-        <jdk.version>11</jdk.version>
+        <jdk.version>8</jdk.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <vmHeapSettings>-Xms1G -Xmx2G</vmHeapSettings>

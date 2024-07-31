@@ -25,11 +25,7 @@ import static io.microraft.impl.local.LocalRaftEndpoint.newEndpoint;
 import static io.microraft.test.util.RaftTestUtils.majority;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
+import java.util.*;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -52,7 +48,7 @@ public class RaftStateTest {
 
     private LocalRaftEndpoint localEndpoint = newEndpoint();
     private Collection<RaftEndpoint> initialEndpoints = new LinkedHashSet<>(
-            List.of(localEndpoint, newEndpoint(), newEndpoint(), newEndpoint(), newEndpoint()));
+            Arrays.asList(localEndpoint, newEndpoint(), newEndpoint(), newEndpoint(), newEndpoint()));
     private RaftGroupMembersView groupMembers = new DefaultRaftGroupMembersViewOrBuilder().setLogIndex(0)
             .setMembers(initialEndpoints).setVotingMembers(initialEndpoints).build();
     private RaftState state;

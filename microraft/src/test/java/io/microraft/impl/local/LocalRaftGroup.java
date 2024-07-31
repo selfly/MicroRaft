@@ -17,25 +17,6 @@
 
 package io.microraft.impl.local;
 
-import static io.microraft.RaftConfig.DEFAULT_RAFT_CONFIG;
-import static io.microraft.test.util.AssertionUtils.eventually;
-import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.toList;
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.microraft.RaftConfig;
 import io.microraft.RaftEndpoint;
 import io.microraft.RaftNode;
@@ -51,6 +32,20 @@ import io.microraft.report.RaftNodeReport;
 import io.microraft.report.RaftNodeReportListener;
 import io.microraft.statemachine.StateMachine;
 import io.microraft.test.util.AssertionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+
+import static io.microraft.RaftConfig.DEFAULT_RAFT_CONFIG;
+import static io.microraft.test.util.AssertionUtils.eventually;
+import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toList;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * This class is used for running a Raft group with local Raft nodes. It
@@ -508,7 +503,7 @@ public final class LocalRaftGroup {
      *             if no Raft node is found for any of the given endpoints list
      */
     public void splitMembers(RaftEndpoint... endpoints) {
-        splitMembers(List.of(endpoints));
+        splitMembers(Arrays.asList(endpoints));
     }
 
     /**

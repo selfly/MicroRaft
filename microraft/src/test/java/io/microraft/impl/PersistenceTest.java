@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -159,7 +160,7 @@ public class PersistenceTest extends BaseTest {
         }
 
         eventually(() -> {
-            for (RaftNodeImpl node : List.of(leader, responsiveFollower)) {
+            for (RaftNodeImpl node : Arrays.asList(leader, responsiveFollower)) {
                 RestoredRaftState restoredState = getRestoredState(node);
                 List<LogEntry> entries = restoredState.getLogEntries();
                 assertThat(entries).hasSize(count);

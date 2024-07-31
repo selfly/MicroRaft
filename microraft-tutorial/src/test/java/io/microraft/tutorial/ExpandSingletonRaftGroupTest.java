@@ -1,24 +1,19 @@
 package io.microraft.tutorial;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.fail;
-
-import java.lang.StackWalker.Option;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletionException;
-
-import org.junit.Test;
-
-import io.microraft.MembershipChangeMode;
-import io.microraft.Ordered;
-import io.microraft.QueryPolicy;
-import io.microraft.RaftEndpoint;
-import io.microraft.RaftNode;
+import io.microraft.*;
 import io.microraft.exception.IndeterminateStateException;
 import io.microraft.statemachine.StateMachine;
 import io.microraft.tutorial.atomicregister.OperableAtomicRegister;
 import io.microraft.tutorial.atomicregister.SnapshotableAtomicRegister;
+import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletionException;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.fail;
 
 public class ExpandSingletonRaftGroupTest extends BaseLocalTest {
 
@@ -29,7 +24,7 @@ public class ExpandSingletonRaftGroupTest extends BaseLocalTest {
 
     @Override
     protected List<RaftEndpoint> getInitialMembers() {
-        return List.of(LocalRaftEndpoint.newEndpoint());
+        return Arrays.asList(LocalRaftEndpoint.newEndpoint());
     }
 
     @Test

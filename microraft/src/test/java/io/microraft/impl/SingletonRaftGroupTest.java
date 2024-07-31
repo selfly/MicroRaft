@@ -35,6 +35,7 @@ import static org.assertj.core.api.Assertions.fail;
 
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map.Entry;
@@ -770,7 +771,7 @@ public class SingletonRaftGroupTest extends BaseTest {
         group.waitUntilLeaderElected();
 
         eventually(() -> {
-            for (RaftNodeImpl node : List.of(newNode, restoredNode)) {
+            for (RaftNodeImpl node : Arrays.asList(newNode, restoredNode)) {
                 int newTerm = node.getTerm().getTerm();
                 assertThat(newTerm).isGreaterThan(term);
 
@@ -817,7 +818,7 @@ public class SingletonRaftGroupTest extends BaseTest {
         group.waitUntilLeaderElected();
 
         eventually(() -> {
-            for (RaftNodeImpl node : List.of(newNode, restoredNode)) {
+            for (RaftNodeImpl node : Arrays.asList(newNode, restoredNode)) {
                 int newTerm = node.getTerm().getTerm();
                 assertThat(newTerm).isGreaterThan(term);
 
@@ -867,7 +868,7 @@ public class SingletonRaftGroupTest extends BaseTest {
         group.waitUntilLeaderElected();
 
         eventually(() -> {
-            for (RaftNodeImpl node : List.of(newNode, restoredNode)) {
+            for (RaftNodeImpl node : Arrays.asList(newNode, restoredNode)) {
                 int newTerm = node.getTerm().getTerm();
                 assertThat(newTerm).isGreaterThan(term);
 

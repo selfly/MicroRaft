@@ -1,31 +1,5 @@
 package io.microraft.store.sqlite;
 
-import java.io.File;
-import java.sql.Connection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-
-import javax.annotation.Nonnegative;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
-import org.jooq.CloseableDSLContext;
-import org.jooq.Converter;
-import org.jooq.Field;
-import org.jooq.Name;
-import org.jooq.Record;
-import org.jooq.Record1;
-import org.jooq.Select;
-import org.jooq.Table;
-import org.jooq.impl.DSL;
-import org.jooq.impl.SQLDataType;
-import org.sqlite.SQLiteConfig;
-import org.sqlite.SQLiteConfig.JournalMode;
-import org.sqlite.SQLiteConfig.LockingMode;
-import org.sqlite.SQLiteConfig.Pragma;
-import org.sqlite.SQLiteConfig.SynchronousMode;
-
 import io.microraft.RaftEndpoint;
 import io.microraft.lifecycle.RaftNodeLifecycleAware;
 import io.microraft.model.RaftModelFactory;
@@ -38,6 +12,23 @@ import io.microraft.model.persistence.RaftTermPersistentState;
 import io.microraft.persistence.RaftStore;
 import io.microraft.persistence.RaftStoreSerializer;
 import io.microraft.persistence.RestoredRaftState;
+import org.jooq.Record;
+import org.jooq.*;
+import org.jooq.impl.DSL;
+import org.jooq.impl.SQLDataType;
+import org.sqlite.SQLiteConfig;
+import org.sqlite.SQLiteConfig.JournalMode;
+import org.sqlite.SQLiteConfig.LockingMode;
+import org.sqlite.SQLiteConfig.Pragma;
+
+import javax.annotation.Nonnegative;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.File;
+import java.sql.Connection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * An implementation of a RaftStore which uses SQLite for persistence. A user of
@@ -102,13 +93,21 @@ public final class RaftSqliteStore implements RaftStore, RaftNodeLifecycleAware 
 
     private void createTablesIfNotExists() {
         dsl.createTableIfNotExists(KV).column(KEY).column(localEndpointField).column(LOCAL_ENDPOINT_VOTING)
-                .column(initialGroupMembersField).column(TERM).column(votedForField).primaryKey(KEY).execute();
+                .column(initialGroupMembersField).column(TERM).column(votedForField)
+                .constraint(DSL.constraint().primaryKey(KEY))
+                // .primaryKey(KEY)
+                .execute();
         dsl.insertInto(KV).columns(KEY).values(PK).onConflictDoNothing().execute();
 
-        dsl.createTableIfNotExists(LOG_ENTRIES).column(INDEX).column(logEntryField).primaryKey(INDEX).execute();
+        dsl.createTableIfNotExists(LOG_ENTRIES).column(INDEX).column(logEntryField)
+                .constraint(DSL.constraint().primaryKey(INDEX))
+                // .primaryKey(INDEX)
+                .execute();
 
         dsl.createTableIfNotExists(SNAPSHOT_CHUNKS).columns(INDEX, CHUNK_INDEX).column(CHUNK_COUNT).column(chunkField)
-                .primaryKey(INDEX, CHUNK_INDEX).execute();
+                .constraint(DSL.constraint().primaryKey(INDEX, CHUNK_INDEX))
+                // .primaryKey(INDEX, CHUNK_INDEX)
+                .execute();
 
         dsl.connection(Connection::commit);
     }
@@ -169,7 +168,7 @@ public final class RaftSqliteStore implements RaftStore, RaftNodeLifecycleAware 
     @Override
     @SuppressWarnings("VarUsage")
     public void persistLogEntries(@Nonnull List<LogEntry> logEntries) {
-        var statement = dsl.insertInto(LOG_ENTRIES, INDEX, logEntryField);
+        InsertValuesStep2<Record, Long, LogEntry> statement = dsl.insertInto(LOG_ENTRIES, INDEX, logEntryField);
         for (LogEntry entry : logEntries) {
             statement.values(entry.getIndex(), entry);
         }
@@ -189,7 +188,8 @@ public final class RaftSqliteStore implements RaftStore, RaftNodeLifecycleAware 
     }
 
     private static <T> Field<T> qualify(Table<?> table, Field<T> field) {
-        return DSL.field(DSL.name(table.$name(), field.$name()), field.getType());
+        // return DSL.field(DSL.name(table.$name(), field.$name()), field.getType());
+        return DSL.field(DSL.name(table.getName(), field.getName()), field.getType());
     }
 
     @Override
@@ -211,7 +211,8 @@ public final class RaftSqliteStore implements RaftStore, RaftNodeLifecycleAware 
     @SuppressWarnings("VarUsage")
     private Select<? extends Record1<Long>> completedSnapshots() {
         Table<?> tempTable = DSL.table("t");
-        var blocks = dsl.select(qualify(SNAPSHOT_CHUNKS, INDEX), DSL.count(qualify(SNAPSHOT_CHUNKS, INDEX)).as(COUNT))
+        SelectHavingStep<Record2<Long, Integer>> blocks = dsl
+                .select(qualify(SNAPSHOT_CHUNKS, INDEX), DSL.count(qualify(SNAPSHOT_CHUNKS, INDEX)).as(COUNT))
                 .from(SNAPSHOT_CHUNKS).groupBy(qualify(SNAPSHOT_CHUNKS, INDEX));
         return dsl.select(qualify(tempTable, INDEX)).from(blocks.asTable(tempTable), SNAPSHOT_CHUNKS)
                 .where(qualify(tempTable, INDEX).eq(qualify(SNAPSHOT_CHUNKS, INDEX)))
@@ -229,7 +230,7 @@ public final class RaftSqliteStore implements RaftStore, RaftNodeLifecycleAware 
     }
 
     public Optional<RestoredRaftState> getRestoredRaftState(boolean truncateStaleData) {
-        var record = dsl
+        Record5<RaftEndpoint, Boolean, RaftGroupMembersView, Integer, RaftEndpoint> record = dsl
                 .select(localEndpointField, LOCAL_ENDPOINT_VOTING, initialGroupMembersField, TERM, votedForField)
                 .from(KV).fetchOne();
 

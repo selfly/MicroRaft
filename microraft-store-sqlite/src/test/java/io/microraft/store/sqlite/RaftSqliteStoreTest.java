@@ -1,25 +1,9 @@
 package io.microraft.store.sqlite;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.function.Consumer;
-
-import javax.annotation.Nonnull;
-
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-
 import io.microraft.RaftEndpoint;
 import io.microraft.impl.local.LocalRaftEndpoint;
 import io.microraft.model.RaftModelFactory;
@@ -36,6 +20,19 @@ import io.microraft.model.persistence.RaftEndpointPersistentState;
 import io.microraft.model.persistence.RaftTermPersistentState;
 import io.microraft.persistence.RaftStoreSerializer;
 import io.microraft.persistence.RestoredRaftState;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import javax.annotation.Nonnull;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.function.Consumer;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class RaftSqliteStoreTest {
     private static final RaftModelFactory RAFT_MODEL_FACTORY = new DefaultRaftModelFactory();
@@ -46,8 +43,8 @@ public class RaftSqliteStoreTest {
     private static final boolean VOTING = true;
 
     private static final RaftGroupMembersView INITIAL_GROUP_MEMBERS = RAFT_MODEL_FACTORY
-            .createRaftGroupMembersViewBuilder().setLogIndex(RAFT_INDEX).setMembers(List.of(ENDPOINT_A, ENDPOINT_B))
-            .setVotingMembers(List.of(ENDPOINT_A)).build();
+            .createRaftGroupMembersViewBuilder().setLogIndex(RAFT_INDEX)
+            .setMembers(Arrays.asList(ENDPOINT_A, ENDPOINT_B)).setVotingMembers(Arrays.asList(ENDPOINT_A)).build();
 
     @Rule
     public final TemporaryFolder tempDir = new TemporaryFolder();
@@ -87,14 +84,14 @@ public class RaftSqliteStoreTest {
     public void testLogEntryFlushing() {
         withRaftStore(RaftSqliteStoreTest::persistInitialState);
         withRaftStore(store -> {
-            store.persistLogEntries(List.of(logEntry(1, 1), logEntry(2, 1), logEntry(3, 1)));
+            store.persistLogEntries(Arrays.asList(logEntry(1, 1), logEntry(2, 1), logEntry(3, 1)));
             store.flush();
         });
         withRaftStore(store -> {
             assertThat(store.getRestoredRaftState(false).get().getLogEntries())
                     .usingRecursiveFieldByFieldElementComparator()
                     .containsExactly(logEntry(1, 1), logEntry(2, 1), logEntry(3, 1));
-            store.persistLogEntries(List.of(logEntry(4, 1), logEntry(5, 1)));
+            store.persistLogEntries(Arrays.asList(logEntry(4, 1), logEntry(5, 1)));
             store.flush();
         });
         withRaftStore(store -> {
@@ -114,7 +111,7 @@ public class RaftSqliteStoreTest {
     public void testSnapshots() throws IOException {
         withRaftStore(RaftSqliteStoreTest::persistInitialState);
         withRaftStore(store -> {
-            store.persistLogEntries(List.of(logEntry(1, 1), logEntry(2, 1), logEntry(3, 1), logEntry(4, 1)));
+            store.persistLogEntries(Arrays.asList(logEntry(1, 1), logEntry(2, 1), logEntry(3, 1), logEntry(4, 1)));
             store.flush();
             store.persistSnapshotChunk(snapshotChunk(2, 1, 0, 1));
             store.flush();
@@ -132,7 +129,7 @@ public class RaftSqliteStoreTest {
             assertThat(restoredRaftState.getLogEntries()).usingRecursiveFieldByFieldElementComparator()
                     .containsExactly(logEntry(4, 1));
             assertThat(restoredRaftState.getSnapshotEntry().getOperation()).usingRecursiveComparison()
-                    .isEqualTo(List.of(snapshotChunk(3, 1, 0, 1)));
+                    .isEqualTo(Arrays.asList(snapshotChunk(3, 1, 0, 1)));
         });
         sqlite = new File(tempDir.newFolder(), "sqlite.db");
         withRaftStore(RaftSqliteStoreTest::persistInitialState);
@@ -175,7 +172,7 @@ public class RaftSqliteStoreTest {
     public void testRestoreCleansUpRedundantLogEntriesAndSnapshotChunks() {
         withRaftStore(RaftSqliteStoreTest::persistInitialState);
         withRaftStore(store -> {
-            store.persistLogEntries(List.of(logEntry(1, 1)));
+            store.persistLogEntries(Arrays.asList(logEntry(1, 1)));
             store.persistSnapshotChunk(snapshotChunk(2, 1, 0, 2));
             store.persistSnapshotChunk(snapshotChunk(3, 1, 0, 1));
             store.flush();

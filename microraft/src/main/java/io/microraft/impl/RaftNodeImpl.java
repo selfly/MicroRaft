@@ -17,119 +17,26 @@
 
 package io.microraft.impl;
 
-import static io.microraft.RaftNodeStatus.ACTIVE;
-import static io.microraft.RaftNodeStatus.INITIAL;
-import static io.microraft.RaftNodeStatus.TERMINATED;
-import static io.microraft.RaftNodeStatus.UPDATING_RAFT_GROUP_MEMBER_LIST;
-import static io.microraft.RaftNodeStatus.isTerminal;
-import static io.microraft.RaftRole.FOLLOWER;
-import static io.microraft.RaftRole.LEADER;
-import static io.microraft.RaftRole.LEARNER;
-import static io.microraft.impl.log.RaftLog.FIRST_VALID_LOG_INDEX;
-import static io.microraft.impl.log.RaftLog.getLogCapacity;
-import static io.microraft.impl.log.RaftLog.getMaxLogEntryCountToKeepAfterSnapshot;
-import static io.microraft.model.log.SnapshotEntry.isNonInitial;
-import static java.lang.Math.min;
-import static java.util.Arrays.sort;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
-import static java.util.Collections.shuffle;
-import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
-
-import java.io.IOException;
-import java.time.Clock;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Random;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.microraft.MembershipChangeMode;
-import io.microraft.Ordered;
-import io.microraft.QueryPolicy;
-import io.microraft.RaftConfig;
-import io.microraft.RaftEndpoint;
-import io.microraft.RaftNode;
-import io.microraft.RaftNodeStatus;
-import io.microraft.exception.CannotReplicateException;
-import io.microraft.exception.IndeterminateStateException;
-import io.microraft.exception.LaggingCommitIndexException;
-import io.microraft.exception.NotLeaderException;
-import io.microraft.exception.RaftException;
+import io.microraft.*;
+import io.microraft.exception.*;
 import io.microraft.executor.RaftNodeExecutor;
-import io.microraft.impl.handler.AppendEntriesFailureResponseHandler;
-import io.microraft.impl.handler.AppendEntriesRequestHandler;
-import io.microraft.impl.handler.AppendEntriesSuccessResponseHandler;
-import io.microraft.impl.handler.InstallSnapshotRequestHandler;
-import io.microraft.impl.handler.InstallSnapshotResponseHandler;
-import io.microraft.impl.handler.PreVoteRequestHandler;
-import io.microraft.impl.handler.PreVoteResponseHandler;
-import io.microraft.impl.handler.TriggerLeaderElectionHandler;
-import io.microraft.impl.handler.VoteRequestHandler;
-import io.microraft.impl.handler.VoteResponseHandler;
+import io.microraft.impl.handler.*;
 import io.microraft.impl.log.RaftLog;
 import io.microraft.impl.report.RaftLogStatsImpl;
 import io.microraft.impl.report.RaftNodeReportImpl;
-import io.microraft.impl.state.FollowerState;
-import io.microraft.impl.state.LeaderState;
-import io.microraft.impl.state.QueryState;
-import io.microraft.impl.state.RaftGroupMembersState;
-import io.microraft.impl.state.RaftState;
-import io.microraft.impl.state.RaftTermState;
+import io.microraft.impl.state.*;
 import io.microraft.impl.state.QueryState.QueryContainer;
 import io.microraft.impl.statemachine.InternalCommitAware;
 import io.microraft.impl.statemachine.NoOp;
-import io.microraft.impl.task.HeartbeatTask;
-import io.microraft.impl.task.LeaderBackoffResetTask;
-import io.microraft.impl.task.LeaderElectionTimeoutTask;
-import io.microraft.impl.task.FlushTask;
-import io.microraft.impl.task.MembershipChangeTask;
-import io.microraft.impl.task.PreVoteTask;
-import io.microraft.impl.task.PreVoteTimeoutTask;
-import io.microraft.impl.task.QueryTask;
-import io.microraft.impl.task.RaftStateSummaryPublishTask;
-import io.microraft.impl.task.ReplicateTask;
-import io.microraft.impl.task.TransferLeadershipTask;
+import io.microraft.impl.task.*;
 import io.microraft.impl.util.OrderedFuture;
 import io.microraft.lifecycle.RaftNodeLifecycleAware;
 import io.microraft.model.RaftModelFactory;
 import io.microraft.model.groupop.RaftGroupOp;
 import io.microraft.model.groupop.UpdateRaftGroupMembersOp;
-import io.microraft.model.log.BaseLogEntry;
-import io.microraft.model.log.LogEntry;
-import io.microraft.model.log.RaftGroupMembersView;
-import io.microraft.model.log.SnapshotChunk;
-import io.microraft.model.log.SnapshotEntry;
-import io.microraft.model.message.AppendEntriesFailureResponse;
-import io.microraft.model.message.AppendEntriesRequest;
+import io.microraft.model.log.*;
+import io.microraft.model.message.*;
 import io.microraft.model.message.AppendEntriesRequest.AppendEntriesRequestBuilder;
-import io.microraft.model.message.AppendEntriesSuccessResponse;
-import io.microraft.model.message.InstallSnapshotRequest;
-import io.microraft.model.message.InstallSnapshotResponse;
-import io.microraft.model.message.PreVoteRequest;
-import io.microraft.model.message.PreVoteResponse;
-import io.microraft.model.message.RaftMessage;
-import io.microraft.model.message.TriggerLeaderElectionRequest;
-import io.microraft.model.message.VoteRequest;
-import io.microraft.model.message.VoteResponse;
 import io.microraft.persistence.NopRaftStore;
 import io.microraft.persistence.RaftStore;
 import io.microraft.persistence.RestoredRaftState;
@@ -139,6 +46,31 @@ import io.microraft.report.RaftNodeReport.RaftNodeReportReason;
 import io.microraft.report.RaftNodeReportListener;
 import io.microraft.statemachine.StateMachine;
 import io.microraft.transport.Transport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.IOException;
+import java.time.Clock;
+import java.time.Duration;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.CompletableFuture;
+
+import static io.microraft.RaftNodeStatus.*;
+import static io.microraft.RaftRole.*;
+import static io.microraft.impl.log.RaftLog.*;
+import static io.microraft.model.log.SnapshotEntry.isNonInitial;
+import static java.lang.Math.min;
+import static java.util.Arrays.sort;
+import static java.util.Collections.*;
+import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.*;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
+
+;
 
 /**
  * Implementation of {@link RaftNode}.
@@ -246,7 +178,7 @@ public final class RaftNodeImpl implements RaftNode {
     }
 
     private void populateLifecycleAwareComponents() {
-        for (Object component : List.of(executor, transport, stateMachine, store, modelFactory,
+        for (Object component : Arrays.asList(executor, transport, stateMachine, store, modelFactory,
                 raftNodeReportListener)) {
             if (component instanceof RaftNodeLifecycleAware) {
                 lifecycleAwareComponents.add((RaftNodeLifecycleAware) component);
@@ -791,9 +723,10 @@ public final class RaftNodeImpl implements RaftNode {
         Optional<Long> quorumTimestamp = getQuorumHeartbeatTimestamp();
         // non-empty if this node is not leader and received at least one heartbeat from
         // the leader.
-        Optional<Long> leaderHeartbeatTimestamp = (quorumTimestamp.isEmpty() && this.lastLeaderHeartbeatTimestamp > 0)
-                ? Optional.of(Math.min(this.lastLeaderHeartbeatTimestamp, clock.millis()))
-                : Optional.empty();
+        Optional<Long> leaderHeartbeatTimestamp = (!quorumTimestamp.isPresent()
+                && this.lastLeaderHeartbeatTimestamp > 0)
+                        ? Optional.of(Math.min(this.lastLeaderHeartbeatTimestamp, clock.millis()))
+                        : Optional.empty();
 
         return new RaftNodeReportImpl(requireNonNull(reason), groupId, state.localEndpoint(), state.initialMembers(),
                 state.committedGroupMembers(), state.effectiveGroupMembers(), state.role(), status, state.termState(),
@@ -1403,7 +1336,7 @@ public final class RaftNodeImpl implements RaftNode {
 
     private List<RaftEndpoint> getSnapshottedMembers(LeaderState leaderState, SnapshotEntry snapshotEntry) {
         if (!config.isTransferSnapshotsFromFollowersEnabled()) {
-            return List.of(state.localEndpoint());
+            return Collections.singletonList(state.localEndpoint());
         }
 
         long now = clock.millis();
@@ -1829,7 +1762,7 @@ public final class RaftNodeImpl implements RaftNode {
 
     public boolean demoteToFollowerIfQuorumHeartbeatTimeoutElapsed() {
         Optional<Long> quorumTimestamp = getQuorumHeartbeatTimestamp();
-        if (quorumTimestamp.isEmpty()) {
+        if (!quorumTimestamp.isPresent()) {
             return true;
         }
 

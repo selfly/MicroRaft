@@ -22,6 +22,7 @@ import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import io.microraft.exception.RaftException;
@@ -320,7 +321,7 @@ public final class RaftLog {
         }
 
         try {
-            store.persistLogEntries(List.of(entry));
+            store.persistLogEntries(Collections.singletonList(entry));
         } catch (IOException e) {
             throw new RaftException("Failed to persist log entry at index: " + entry.getIndex(), null, e);
         }
