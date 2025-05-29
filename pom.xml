@@ -4,7 +4,7 @@
     <groupId>io.microraft</groupId>
     <artifactId>microraft-root</artifactId>
     <packaging>pom</packaging>
-    <version>0.8-SNAPSHOT</version>
+    <version>0.9-SNAPSHOT</version>
 
     <name>MicroRaft Root</name>
     <url>https://microraft.io</url>
@@ -147,12 +147,6 @@
             <artifactId>log4j-core</artifactId>
             <version>${log4j.version}</version>
             <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>net.ju-n.maven.plugins</groupId>
-            <artifactId>checksum-maven-plugin</artifactId>
-            <version>${maven.checksum.plugin.version}</version>
         </dependency>
     </dependencies>
 
